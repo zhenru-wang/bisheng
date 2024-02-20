@@ -1,11 +1,18 @@
 # from typing import Union
 
 from pydantic import BaseModel
+from typing import List, Union
 
 
 class Message(BaseModel):
     role: str
     content: str
+
+
+class MessageMinimax(BaseModel):
+    sender_type: str
+    sender_name: str
+    text: str
 
 
 class Function(BaseModel):
@@ -16,14 +23,14 @@ class Function(BaseModel):
 
 class ChatInput(BaseModel):
     model: str
-    messages: list[Message] = []
+    messages: Union[List[MessageMinimax], List[Message]]= []
     top_p: float = None
     temperature: float = None
     n: int = 1
     stream: bool = False
     stop: str = None
     max_tokens: int = 256
-    functions: list[Function] = []
+    functions: List[Function] = []
     function_call: str = None
 
 
@@ -32,6 +39,12 @@ class Choice(BaseModel):
     message: Message = None
     finish_reason: str = 'stop'
 
+
+class ChoiceMinimax(BaseModel):
+    # index: int
+    message: Message = None
+    finish_reason: str = 'stop'
+    
 
 class Usage(BaseModel):
     prompt_tokens: int = 0
@@ -46,7 +59,7 @@ class ChatOutput(BaseModel):
     object: str = None
     model: str = None
     created: int = None
-    choices: list[Choice] = []
+    choices: Union[List[Choice], List[ChoiceMinimax]]= []
     usage: Usage = None
 
 
