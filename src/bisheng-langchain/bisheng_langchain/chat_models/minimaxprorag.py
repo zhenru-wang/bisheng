@@ -121,7 +121,7 @@ def _convert_message_to_dict1(message: BaseMessage) -> dict:
 
 
 
-class ChatMinimaxAIProrag(BaseChatModel):
+class ChatMinimaxAIprorag(BaseChatModel):
     """Wrapper around proxy Chat large language models.
 
     To use, the environment variable ``ELEMAI_API_KEY`` set with your API key.
