@@ -4,8 +4,8 @@ from .proxy_llm import ProxyChatLLM
 from .qwen import ChatQWen
 from .wenxin import ChatWenxin
 from .xunfeiai import ChatXunfeiAI
-from .zhipuai import ChatZhipuAI
-from .zhipuai import ChatZhipuAIrag
+# from .zhipuairag import ChatZhipuAI
+from .zhipuairag import ChatZhipuAIrag
 
 __all__ = [
     'ProxyChatLLM', 'ChatMinimaxAI', 'ChatWenxin', 'ChatZhipuAI', 'ChatXunfeiAI', 'HostChatGLM',
