@@ -105,7 +105,7 @@ def _convert_message_to_dict2(message: BaseMessage) -> List[dict]:
     return [message_dict]
 
 
-class ChatZhipuAI(BaseChatModel):
+class ChatZhipuAIrag(BaseChatModel):
     """Wrapper around ZhipuAI Chat large language models.
 
     To use, you should have the ``zhipuai`` python package installed, and the
