@@ -1,0 +1,88 @@
+data:
+  origin_file_path: '/home/public/rag_benchmark_v1.0/rag_benchmark_processed'
+  question: '/home/jingwangyuan/data/questions_info_with_answer_sample.xlsx'
+  save_answer: '/home/jingwangyuan/data/questions_moonshot32.xlsx'
+
+milvus:
+  host: '192.168.106.116'
+  port: '19530'
+  drop_old: True
+
+elasticsearch:
+  url: 'http://192.168.106.116:9200'
+  ssl_verify:
+    basic_auth: ["elastic", "oSGL-zVvZ5P3Tm7qkDLC"]
+
+embedding:
+  type: 'OpenAIEmbeddings'
+  model: 'text-embedding-ada-002'
+
+chat_llm:
+  type: 'ChatOpenAI'
+  model: 'moonshot-v1-32k'
+  openai_api_base: 'https://api.moonshot.cn/v1'
+  temperature: 0.0
+  openai_api_key : "Y21pamZpdWNwN2Zic3ZtdGJpdGc6bXNrLWZLNHp4VDMxMklsVU56MUxmOVNwY0RMeFMyaUg="
+
+
+# chat_llm:
+#   type: 'ChatMinimaxAI'
+#   model: 'abab6-chat'
+#   temperature: 0.1
+#   minimaxai_api_key: 'eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJOYW1lIjoiZGF0YWVsZW0iLCJTdWJqZWN0SUQiOiIxNjg4OTgzNjYwMDY0NzgzIiwiUGhvbmUiOiJNVGcyTVRFd01EYzFNalk9IiwiR3JvdXBJRCI6IjE2ODg5ODM2NjA1ODA1MTQiLCJQYWdlTmFtZSI6IiIsIk1haWwiOiJoYW5mZW5nQGRhdGFlbGVtLmNvbSIsIkNyZWF0ZVRpbWUiOiIyMDIzLTA3LTEwIDE4OjEyOjQ0IiwiaXNzIjoibWluaW1heCJ9.uHPkySzCVBdZbWFIffAarqZ8_Z2Q6Zu1JAv4RmTAJFg-w4SrogMFai82FaUmaS7bg71rNYlNSTLXoLBkkkSMZJ_cKQMBO3KsT8GeTZ6QYIn5TlsJG-3RUHoSU7bySGI9FilDiQhW0C4ZHX6NljUjR3pSZlX0a2zaX3V3PBlQD5yoWDYuB7kSHlfe9v0AzTvhbcIuxAJd8j7zZ06h-PuX_QslRy9SQBHhcS4VN5qWJrDeJ7xRUH8-fiXJFMREE8p4oMwK1xXSAxu8UBEvdkdPk0NAKNEAOtBpNeZpmaPYr5ncOg9emNXXafTFvR285z0upMi97EXnsr_kr7mzwwtrpw'
+#   minimaxai_group_id: '1688983660580514'
+
+# chat_llm:
+#   type: 'ChatZhipuAI'
+#   model_name: 'glm-4'
+#   # model_name: 'glm-4'
+#   temperature: 0.01
+#   zhipuai_api_key: 'a57f9268b15a331b857ec5a73765f948.57xj0ahR3cBv5DLe'
+#   request_timeout: '1000'
+
+# chat_llm:
+#   type: 'ChatWenxin'
+#   model_name: 'ERNIE-Bot 4.0'
+#   temperature: 0.01
+#   wenxin_api_key: '7ANcGLZzAUWR32y500HT1w9d'
+#   wenxin_secret_key: 'mLwA8exZcfskt9aGuBRwbmpRB0hamaWO'
+
+knowledge:
+  loader: 
+    type: 'ElemUnstructuredLoader'
+    unstructured_api_url: 'http://192.168.106.20:10001/v1/etl4llm/predict'
+  splitter: 
+    type: 'ElemCharacterTextSplitter'
+    chunk_size: 500
+    chunk_overlap: 50
+    separators: ['\n\n', '\n', ' ', '']
+  save_milvus: True
+  save_es: True
+  suffix: 'test'
+
+retrieval_rerank:
+  retrieval:
+    type: 'base' 
+    mode: 'hybrid' # 'keyword' or 'vector' or 'hybrid'
+    combine_strategy: 'mix' # 'mix' or 'keyword_front' or 'vector_front'
+    search_type: 'similarity'
+    chunk_num: 6   # 2 4 6 8
+  delete_duplicate: False
+  with_rank: False
+  rerank:
+    type: 'BGEReranker'
+    model: 'bge-reranker-large'
+
+generate:
+  chain_type: 'stuff'
+
+metric:
+  type: 'bisheng-ragas'
+  question_column: '问题'
+  gt_column: 'GT'
+  answer_column: 'rag_answer'
+  query_type_column: '问题类型'
+  metrics: ['answer_correctness_bisheng']
+  batch_size: 5
+
+  
