@@ -1,7 +1,7 @@
 data:
   origin_file_path: '/home/public/rag_benchmark_v1.0/rag_benchmark_processed'
   question: '/home/jingwangyuan/data/questions_info_with_answer_sample.xlsx'
-  save_answer: '/home/jingwangyuan/data/questions_moonshot32.xlsx'
+  save_answer: '/home/jingwangyuan/data/questions_gpt_vec.xlsx'
 
 milvus:
   host: '192.168.106.116'
@@ -12,15 +12,44 @@ elasticsearch:
   url: 'http://192.168.106.116:9200'
   ssl_verify:
     basic_auth: ["elastic", "oSGL-zVvZ5P3Tm7qkDLC"]
+  drop_old: True
 
 embedding:
-  type: 'ME5Embedding'
-  model: 'multilingual-e5-large'
-  host_base_url: 'http://192.168.106.12:9001/v2.1/models'
+  type: 'OpenAIEmbeddings'
+  model: 'text-embedding-ada-002'
+
+# embedding:
+#   type: 'HuggingFaceBgeEmbeddings'
+#   model_name: '/home/public/llm/bge-large-zh-v1.5'
+#   model_kwargs:
+#     device: 'cuda:0'
+#   encode_kwargs: 
+#     normalize_embeddings: True
+
+# embedding:
+#   type: 'HuggingFaceMultilingualEmbeddings'
+#   model_name: '/home/public/llm/multilingual-e5-large'
+#   model_kwargs:
+#     device: 'cuda:0'
+#   encode_kwargs: 
+#     normalize_embeddings: True
+
+# embedding:
+#   type: 'HuggingFaceGteEmbeddings'
+#   model_name: '/home/public/llm/gte-large-zh'
+#   model_kwargs:
+#     device: 'cuda:0'
+#   encode_kwargs: 
+#     normalize_embeddings: True
+
+# embedding:
+#   type: 'ME5Embedding'
+#   model: 'multilingual-e5-large'
+#   host_base_url: 'http://192.168.106.12:9001/v2.1/models'
 
 chat_llm:
   type: 'ChatOpenAI'
-  model: 'gpt-3.5-turbo-1106'
+  model: 'gpt-4-1106-preview'
   temperature: 0.0
 
 # chat_llm:
@@ -69,7 +98,7 @@ knowledge:
 retrieval_rerank:
   retrieval:
     type: 'base' 
-    mode: 'hybrid' # 'keyword' or 'vector' or 'hybrid'
+    mode: 'vector' # 'keyword' or 'vector' or 'hybrid'
     combine_strategy: 'mix' # 'mix' or 'keyword_front' or 'vector_front'
     search_type: 'similarity'
     chunk_num: 6   # 2 4 6 8

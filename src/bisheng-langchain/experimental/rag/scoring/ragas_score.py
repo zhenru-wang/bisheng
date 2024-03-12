@@ -8,10 +8,8 @@ from typing import Any, Dict, List, Optional, Tuple, Union
 
 import pandas as pd
 from datasets import Dataset
-from loguru import logger
 from ragas import evaluate
-from ragas.metrics import AnswerCorrectness, AnswerCorrectnessBisheng
-from ragas.metrics.base import Metric
+from ragas.metrics import AnswerCorrectness, AnswerCorrectnessBisheng, AnswerRecallBisheng
 
 
 @dataclass
@@ -25,6 +23,7 @@ class RagScore:
     contexts_column: Optional[str] = None
     query_type_column: Optional[str] = None
     batch_size: int = 5
+    whether_gtsplit: bool = False
 
     def _validate_metrics(self):
         for metric in self.metrics:
@@ -50,6 +49,16 @@ class RagScore:
         result = evaluate(
             dataset=dataset,
             metrics=[answer_correctness],
+        )
+        self.score_map_keys = list(result.keys())
+        df = result.to_pandas()
+        return df
+    
+    def ragas_answer_recall_bisheng(self, dataset: Dataset) -> pd.DataFrame:
+        answer_recall =AnswerRecallBisheng(batch_size=self.batch_size, whether_gtsplit=self.whether_gtsplit)
+        result = evaluate(
+            dataset=dataset,
+            metrics=[answer_recall],
         )
         self.score_map_keys = list(result.keys())
         df = result.to_pandas()
@@ -106,8 +115,10 @@ class RagScore:
         save_group_df = dict()
         for metric_name in self.metrics:
             ragas_result = getattr(self, f'ragas_{metric_name}')(dataset)
+            if metric_name =='answer_recall_bisheng':
+                df["gt_split_point"] = ragas_result["gt_split_point"]
+                df["analyse"] = ragas_result["analyse"]
             score_map = dict().fromkeys(self.score_map_keys, ragas_result)
-
             for metric, scores in score_map.items():
                 df[metric] = df.index.map({idx: rows[metric] for idx, rows in scores.iterrows()})
 
@@ -136,14 +147,16 @@ class RagScore:
 
 if __name__ == '__main__':
     params = {
-        'excel_path': './test_score_2.xlsx',
+        'excel_path': '/home/jingwangyuan/bisheng/src/bisheng-langchain/experimental/rag/scoring/test/questions_info_with_answer_sample_gpt4_no_retrieval_chat.xlsx',
         'save_path': './',
         'question_column': '问题',
         'gt_column': 'GT',
         'answer_column': 'rag_answer',
         'query_type_column': '问题类型',
-        'metrics': ['answer_correctness', 'answer_correctness_bisheng'],
-        'batch_size': 1,
+        # 'metrics': ['answer_correctness', 'answer_correctness_bisheng'],
+        'metrics': ['answer_recall_bisheng'],
+        'batch_size': 10,
+        'whether_gtsplit': False,
     }
     rag_score = RagScore(**params)
     rag_score.score()
