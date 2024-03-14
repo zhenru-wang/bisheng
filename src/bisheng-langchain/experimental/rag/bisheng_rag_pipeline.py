@@ -276,6 +276,7 @@ class BishengRagPipeline():
                 'query_type_column': metric_params['query_type_column'],
                 'metrics': metric_params['metrics'],
                 'batch_size': metric_params['batch_size'],
+                'gt_split_column': metric_params['gt_split_column']
             }
             rag_score = RagScore(**score_params)
             rag_score.score()
@@ -288,7 +289,7 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Process some integers.')
     # 添加参数
     parser.add_argument('--mode', type=str, default='qa', help='upload or qa or score')
-    parser.add_argument('--params', type=str, default='config/baseline.yaml', help='bisheng rag params')
+    parser.add_argument('--params', type=str, default='config/baseline_finance.yaml', help='bisheng rag params')
     # 解析参数
     args = parser.parse_args()
 

@@ -19,6 +19,7 @@ class RagScore:
     save_path: str
     question_column: str
     gt_column: str
+    gt_split_column: str
     answer_column: str
     metrics: List[str]
     contexts_column: Optional[str] = None
@@ -78,8 +79,6 @@ class RagScore:
     def score(self) -> Tuple[pd.DataFrame, Optional[pd.DataFrame]]:
         df = pd.read_excel(self.excel_path)
         ori_row_nums = df.shape[0]
-
-        # 删除含有na的行
         columns_to_check = [
             self.question_column,
             self.gt_column,
@@ -87,11 +86,14 @@ class RagScore:
             self.contexts_column,
             self.query_type_column,
         ]
+        if self.gt_split_column == "gt_split_point":
+            columns_to_check.append(self.gt_split_column)
+
+        # 删除含有na的行
         df.dropna(subset=[col for col in columns_to_check if col], inplace=True)
         df = df.reset_index()
         print(f'删除含有na的行 {ori_row_nums - df.shape[0]} 个!')
         print(f'总计 {df.shape[0]} 个问题')
-
         questions = df[self.question_column].tolist()
         answers = df[self.answer_column].tolist()
         # answers = df[self.answer_column].apply(self._remove_source).tolist() # for openai assistant
@@ -103,12 +105,23 @@ class RagScore:
             else df[self.contexts_column].apply(lambda x: [x]).tolist()
         )
         # To dict
-        data: Dict[str, List[Any]] = {
-            "question": questions,
-            "answer": answers,
-            "contexts": contexts,
-            "ground_truths": ground_truths,
-        }
+        if self.gt_split_column == "gt_split_point":
+            gtsplit = df[self.gt_split_column].tolist()
+            data: Dict[str, List[Any]] = {
+                "question": questions,
+                "answer": answers,
+                "contexts": contexts,
+                "ground_truths": ground_truths,
+                'gt_split_point': gtsplit
+            }
+        else:
+            data: Dict[str, List[Any]] = {
+                "question": questions,
+                "answer": answers,
+                "contexts": contexts,
+                "ground_truths": ground_truths,
+            }
+        
         # Convert dict to dataset
         dataset = Dataset.from_dict(data)
 
@@ -159,7 +172,7 @@ if __name__ == '__main__':
         # 'metrics': ['answer_correctness_bisheng'],
         'metrics': ['answer_recall_bisheng'],
         'batch_size': 10,
-        'whether_gtsplit': True,
+        'whether_gtsplit': False,
     }
     rag_score = RagScore(**params)
     rag_score.score()
