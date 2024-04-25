@@ -22,6 +22,7 @@ from tqdm import tqdm
 from utils import import_by_type, import_class, import_module
 from langchain.docstore.document import Document
 from langchain.chains.question_answering import load_qa_chain
+# from langchain.chat_models import ChatOpenAI
 
 
 class BishengRagPipeline:
@@ -107,7 +108,7 @@ class BishengRagPipeline:
         retrieval_params = kwargs.pop('retrieval_kwargs')
         for key, value in retrieval_params.items():
             input_kwargs[key] = value
-
+        
         input_kwargs['vector_store'] = kwargs.pop('vector_store')
         input_kwargs['keyword_store'] = kwargs.pop('keyword_store')
 
@@ -151,15 +152,17 @@ class BishengRagPipeline:
             collection_name = f"{collection_name}_{self.params['retriever']['suffix']}"
             for index, each_file_path in enumerate(all_file_paths):
                 logger.info(f'each_file_path: {each_file_path}')
-                loader = loader_object(
-                    file_name=os.path.basename(each_file_path), file_path=each_file_path, **loader_params
-                )
-                documents = loader.load()
+                # loader = loader_object(
+                #     file_name=os.path.basename(each_file_path), file_path=each_file_path, **loader_params
+                # )
+                # documents = loader.load()
 
-                # # load from text
-                # with open(each_file_path.replace('.pdf', '.txt'), 'r') as f:
-                #     content = f.read()
-                # documents = [Document(page_content=content, metadata={'source': os.path.basename(each_file_path)})]
+                # load from text
+                if each_file_path.endswith(".txt"):
+                    continue
+                with open(each_file_path.replace('.pdf', '.txt'), 'r') as f:
+                    content = f.read()
+                documents = [Document(page_content=content, metadata={'source': os.path.basename(each_file_path)})]
 
                 logger.info(f'documents: {len(documents)}, page_content: {len(documents[0].page_content)}')
                 if len(documents[0].page_content) == 0:
@@ -167,8 +170,10 @@ class BishengRagPipeline:
 
                 vector_drop_old = self.params['milvus']['drop_old'] if index == 0 else False
                 keyword_drop_old = self.params['elasticsearch']['drop_old'] if index == 0 else False
+                whether_aux_info = self.params['retriever'].get('whether_aux_info', False)
+                max_length = self.params['retriever'].get('max_length', 10000)
                 for idx, retriever in enumerate(self.retriever.retrievers):
-                    retriever.add_documents(documents, collection_name, vector_drop_old)
+                    retriever.add_documents(documents, collection_name, vector_drop_old, whether_aux_info, max_length)
 
     def retrieval_and_rerank(self, question, collection_name, max_content=100000):
         """
@@ -177,7 +182,7 @@ class BishengRagPipeline:
         collection_name = f"{collection_name}_{self.params['retriever']['suffix']}"
         # EnsembleRetriever直接检索召回会默认去重
         docs = self.retriever.get_relevant_documents(query=question, collection_name=collection_name)
-        logger.info(f'retrieval docs origin: {len(docs)}')
+        logger.info(f'retrieval docs origin: {len(docs)}\n')
 
         # delete duplicate
         if self.params['post_retrieval']['delete_duplicate']:
@@ -215,7 +220,6 @@ class BishengRagPipeline:
         # 按照文档的source和chunk_index排序，保证上下文的连贯性和一致性
         if self.params['post_retrieval'].get('sort_by_source_and_index', False):
             docs = sorted(docs, key=lambda x: (x.metadata['source'], x.metadata['chunk_index']))
-            breakpoint()
         return docs
 
     def load_documents(self, file_name, max_content=100000):
@@ -258,7 +262,6 @@ class BishengRagPipeline:
             question = questions_info['问题']
             file_name = questions_info['文件名']
             collection_name = questions_info['知识库名']
-
             if self.params['generate']['with_retrieval']:
                 # retrieval and rerank
                 docs = self.retrieval_and_rerank(question, collection_name, max_content=self.params['generate']['max_content'])
@@ -277,9 +280,6 @@ class BishengRagPipeline:
                 logger.error(f'question: {question}\nerror: {e}')
                 ans = {'output_text': str(e)}
                     
-            # context = '\n\n'.join([doc.page_content for doc in docs])
-            # content = prompt.format(context=context, question=question)
-
             # for rate_limit
             # time.sleep(3)
 
@@ -312,6 +312,7 @@ class BishengRagPipeline:
                 'whether_gtsplit': metric_params.get('whether_gtsplit', False), # 是否需要模型对gt进行要点拆分
             }
             rag_score = RagScore(**score_params)
+            # breakpoint()
             rag_score.score()
         else:
             # todo: 其他评分方法
@@ -322,7 +323,7 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Process some integers.')
     # 添加参数
     parser.add_argument('--mode', type=str, default='qa', help='upload or qa or score')
-    parser.add_argument('--params', type=str, default='config/test/baseline_s2b.yaml', help='bisheng rag params')
+    parser.add_argument('--params', type=str, default='config/baseline_finance_report.yaml', help='bisheng rag params')
     # 解析参数
     args = parser.parse_args()
 

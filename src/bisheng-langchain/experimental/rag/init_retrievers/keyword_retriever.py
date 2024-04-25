@@ -15,6 +15,7 @@ from langchain.text_splitter import TextSplitter
 
 from .baseline_vector_retriever import BaselineVectorRetriever
 
+from init_retrievers.extract_info import extract
 
 class KeywordRetriever(BaseRetriever):
     keyword_store: ElasticKeywordsSearch
@@ -27,14 +28,27 @@ class KeywordRetriever(BaseRetriever):
         documents: List[Document],
         collection_name: str,
         drop_old: bool = False,
+        whether_aux_info: bool = False,
+        max_length: int = 8000,
     ) -> None:
         split_docs = self.text_splitter.split_documents(documents)
         print(f"KeywordRetriever: split document into {len(split_docs)} chunks")
+        aux_info = ''
+        if whether_aux_info:
+            all_text = ""
+            for doc in split_docs:
+                all_text = all_text + doc.page_content + "/n"
+            aux_info = extract(text=all_text, max_length=max_length)
+            print(aux_info)
         for chunk_index, split_doc in enumerate(split_docs):
             if 'chunk_bboxes' in split_doc.metadata:
                 split_doc.metadata.pop('chunk_bboxes')
             split_doc.metadata['chunk_index'] = chunk_index
-
+            if aux_info != '':
+                split_doc.metadata['aux_info'] = aux_info
+                # add key_info into page_content
+                split_doc.page_content = split_doc.metadata["source"] + '\n' + aux_info + '\n' + split_doc.page_content
+        
         elasticsearch_url = self.keyword_store.elasticsearch_url
         ssl_verify = self.keyword_store.ssl_verify
         self.keyword_store.from_documents(
