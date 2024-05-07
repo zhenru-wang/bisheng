@@ -39,7 +39,7 @@ class BishengRagPipeline:
         # init embeddings
         embedding_params = self.params['embedding']
         embedding_object = import_by_type(_type='embeddings', name=embedding_params['type'])
-        if embedding_params['type'] == 'OpenAIEmbeddings':
+        if embedding_params['type'] == 'OpenAIEmbeddings' and embedding_params['openai_proxy']:
             embedding_params.pop('type')
             self.embeddings = embedding_object(
                 http_client=httpx.Client(proxies=embedding_params['openai_proxy']), **embedding_params
@@ -51,7 +51,7 @@ class BishengRagPipeline:
         # init llm
         llm_params = self.params['chat_llm']
         llm_object = import_by_type(_type='llms', name=llm_params['type'])
-        if llm_params['type'] == 'ChatOpenAI':
+        if llm_params['type'] == 'ChatOpenAI' and llm_params['openai_proxy']:
             llm_params.pop('type')
             self.llm = llm_object(http_client=httpx.Client(proxies=llm_params['openai_proxy']), **llm_params)
         else:
@@ -289,9 +289,12 @@ class BishengRagPipeline:
                 'question_column': metric_params['question_column'],
                 'gt_column': metric_params['gt_column'],
                 'answer_column': metric_params['answer_column'],
-                'query_type_column': metric_params['query_type_column'],
+                'query_type_column': metric_params.get('query_type_column', None),
+                'contexts_column': metric_params.get('contexts_column', None),
                 'metrics': metric_params['metrics'],
                 'batch_size': metric_params['batch_size'],
+                'gt_split_column': metric_params.get('gt_split_column', None),
+                'whether_gtsplit': metric_params.get('whether_gtsplit', False), # 是否需要模型对gt进行要点拆分
             }
             rag_score = RagScore(**score_params)
             rag_score.score()
