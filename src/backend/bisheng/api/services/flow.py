@@ -239,26 +239,30 @@ class FlowService:
         # 替换answer
         answer_result = {}
         for key, val in inputs.items():
-            if key == 'data' or key == 'id':
-                continue
-            else:
-                # 其他默认输入key，替换第一个需要输入的key
+            if key != 'data' and key != 'id':
+                # 默认输入key，替换第一个需要输入的key
                 inputs[key] = question
-                break
+        if 'id' in inputs:
+            inputs.pop('id')
         # 替换节点的参数, 替换inputFileNode和VariableNode的参数
         tweaks = {}
-        if inputs.get('data') is not None:
+        if 'data' in inputs:
             node_data = inputs.pop('data')
-            tweaks = process_node_data(node_data)
+            if node_data:
+                tweaks = process_node_data(node_data)
 
         # 执行两个版本的节点
         for one in versions:
             graph_data = process_tweaks(one.data, tweaks)
-            result = await process_graph_cached(graph_data,
-                                                inputs,
-                                                session_id=None,
-                                                history_count=10,
-                                                flow_id=one.flow_id)
+            try:
+                result = await process_graph_cached(graph_data,
+                                                    inputs,
+                                                    session_id=None,
+                                                    history_count=10,
+                                                    flow_id=one.flow_id)
+            except Exception as e:
+                logger.exception(f"exec flow node error version_id: {one.name}")
+                raise Exception(f"{one.name}版本技能执行出错： {str(e)}")
             if isinstance(result, dict) and 'result' in result:
                 task_result = result['result']
             elif hasattr(result, 'result') and hasattr(result, 'session_id'):
