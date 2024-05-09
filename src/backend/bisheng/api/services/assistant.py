@@ -288,7 +288,9 @@ class AssistantService(AssistantUtils):
     @classmethod
     def add_gpts_tools(cls, user: UserPayload, req: GptsToolsTypeRead) -> UnifiedResponseModel:
         """ 添加自定义工具 """
-
+        req.id = None
+        if req.name.__len__() > 30:
+            return resp_500(message="名字过长，不能超过30个字符")
         # 判断类别是否已存在
         tool_type = GptsToolsDao.get_one_tool_type_by_name(user.user_id, req.name)
         if tool_type:
@@ -316,13 +318,14 @@ class AssistantService(AssistantUtils):
             return ToolTypeNotExistsError.return_resp()
         if len(req.children) == 0:
             return ToolTypeEmptyError.return_resp()
+        if req.name.__len__() > 30:
+            return resp_500(message="名字过长，不能超过30个字符")
 
         # 判断工具类别名称是否重复
         tool_type = GptsToolsDao.get_one_tool_type_by_name(user.user_id, req.name)
         if tool_type and tool_type.id != exist_tool_type.id:
             return ToolTypeRepeatError.return_resp()
 
-        #
         exist_tool_type.name = req.name
         exist_tool_type.description = req.description
         exist_tool_type.auth_method = req.auth_method
@@ -332,7 +335,13 @@ class AssistantService(AssistantUtils):
 
         children_map = {}
         for one in req.children:
-            children_map[GptsToolsDao.get_tool_key(exist_tool_type.id, one.tool_key)] = one
+            save_key = GptsToolsDao.get_tool_key(exist_tool_type.id, one.tool_key)
+            save_key_prefix = save_key.split("_")[0]
+            if one.tool_key.startswith(save_key_prefix):
+                # 说明api和数据库的一致，没有通过openapiSchema重新解析
+                children_map[one.tool_key] = one
+            else:
+                children_map[save_key] = one
 
         # 获取此类别下旧的API列表
         old_tool_list = GptsToolsDao.get_list_by_type([exist_tool_type.id])
@@ -355,6 +364,7 @@ class AssistantService(AssistantUtils):
 
         add_children = []
         for one in children_map.values():
+            one.id = None
             one.user_id = user.user_id
             one.is_preset = False
             one.is_delete = 0
