@@ -1,18 +1,30 @@
-import { TitleIconBg } from "@/components/bs-comp/cardComponent"
-import { ToolIcon } from "@/components/bs-icons/tool"
-import { AccordionContent, AccordionItem, AccordionTrigger } from "@/components/bs-ui/accordion"
-import { Button } from "@/components/bs-ui/button"
+import { TitleIconBg } from "@/components/bs-comp/cardComponent";
+import { ToolIcon } from "@/components/bs-icons/tool";
+import {
+    AccordionContent,
+    AccordionItem,
+    AccordionTrigger,
+} from "@/components/bs-ui/accordion";
+import { Button } from "@/components/bs-ui/button";
+import { useTranslation } from "react-i18next";
 
-export default function ToolItem({ type, select, data, onEdit = (id) => { }, onSelect }) {
+export default function ToolItem({
+    type,
+    select,
+    data,
+    onEdit = (id) => { },
+    onSelect,
+}) {
+    const { t } = useTranslation();
 
 
     return <AccordionItem key={data.id} value={data.id} className="data-[state=open]:border-2 data-[state=open]:border-primary/20 data-[state=open]:rounded-md">
         <AccordionTrigger>
-            <div className="flex gap-2 text-start relative pr-4">
+            <div className="group w-full flex gap-2 text-start relative pr-4">
                 <TitleIconBg className="w-8 h-8 min-w-8" id={data.id} ><ToolIcon /></TitleIconBg>
-                <div>
-                    <p className="text-sm font-medium leading-none">{data.name}
-                        {type === 'edit' && <Button size="sm" className="ml-4 h-6" onClick={(e) => onEdit(data.id)}>编辑</Button>}
+                <div className="flex-1 min-w-0">
+                    <p className="w-full text-sm font-medium leading-none flex justify-between">{data.name}
+                        {type === 'edit' && <Button size="sm" className="ml-4 h-6 group-hover:visible invisible" onClick={(e) => onEdit(data.id)}>{t("edit")}</Button>}
                     </p>
                     <p className="text-sm text-muted-foreground mt-2">{data.description}</p>
                 </div>
@@ -25,7 +37,7 @@ export default function ToolItem({ type, select, data, onEdit = (id) => { }, onS
                         <h1 className="text-sm font-medium leading-none">{api.name}</h1>
                         <p className="text-sm text-muted-foreground mt-2">{api.desc}</p>
                         <p className="text-sm text-muted-foreground mt-2 flex gap-2">
-                            <span>参数</span>
+                            <span>{t("build.params")}</span>:
                             :
                             {
                                 api.api_params.map(param => (
@@ -38,12 +50,12 @@ export default function ToolItem({ type, select, data, onEdit = (id) => { }, onS
                         </p>
                         {
                             select && (select.some(_ => _.id === api.id) ?
-                                <Button size="sm" className="absolute right-4 bottom-2 h-6" disabled>已添加</Button>
-                                : <Button size="sm" className="absolute right-4 bottom-2 h-6" onClick={() => onSelect(api)}>添加</Button>)
+                                <Button size="sm" className="absolute right-4 bottom-2 h-6" disabled>{t("build.added")}</Button>
+                                : <Button size="sm" className="absolute right-4 bottom-2 h-6" onClick={() => onSelect(api)}>{t("build.add")}</Button>)
                         }
                     </div>
                 ))}
             </div>
         </AccordionContent>
-    </AccordionItem>
-};
+    </AccordionItem >
+}

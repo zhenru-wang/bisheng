@@ -13,6 +13,7 @@ import { createTool, deleteTool, downloadToolSchema, updateTool } from "@/contro
 import { captureAndAlertRequestErrorHoc } from "@/controllers/request"
 import { PlusIcon } from "@radix-ui/react-icons"
 import { forwardRef, useImperativeHandle, useRef, useState } from "react"
+import { useTranslation } from "react-i18next"
 
 const TestDialog = forwardRef((props: any, ref) => {
     const [testShow, setTestShow] = useState(false)
@@ -64,16 +65,20 @@ const TestDialog = forwardRef((props: any, ref) => {
 const formData = {
     toolName: "",
     schemaContent: "",
-    authType: "none",
+    authType: "basic",
     apiKey: "",
-    authMethod: "basic",
+    authMethod: "none",
     customHeader: ""
 }
 
 const EditTool = forwardRef((props: any, ref) => {
     const [editShow, setShow] = useState(false)
     const setEditShow = (bln) => {
-        !bln && setFormState({ ...formData })
+        if (!bln) {
+            // 关闭弹窗初始化数据
+            setFormState({ ...formData })
+            setTableData([])
+        }
         setShow(bln)
     }
     const [delShow, setDelShow] = useState(false)
@@ -116,6 +121,7 @@ const EditTool = forwardRef((props: any, ref) => {
 
     // 发送请求给后端获取Schema
     const handleImportSchema = () => {
+        // http://192.168.106.120:3002/openapi-test.json
         captureAndAlertRequestErrorHoc(downloadToolSchema({ download_url: schemaUrl.current })).then(res => {
             schemaUrl.current = ''
             if (!res) return
@@ -131,8 +137,9 @@ const EditTool = forwardRef((props: any, ref) => {
     };
 
     // 根据模板设置Schema内容
-    const handleSelectTemplate = (key) => {
-        captureAndAlertRequestErrorHoc(downloadToolSchema({ file_content: Example[key] })).then(res => {
+    const handleSelectTemplate = (key = '') => {
+        const file_content = key ? Example[key] : formState.schemaContent
+        file_content && captureAndAlertRequestErrorHoc(downloadToolSchema({ file_content })).then(res => {
             schemaUrl.current = ''
             if (!res) return
             fromDataRef.current = res
@@ -167,7 +174,7 @@ const EditTool = forwardRef((props: any, ref) => {
             setEditShow(false)
             props.onReload()
             message({
-                description: "保存成功",
+                description: t('skills.saveSuccessful'),
                 variant: "success"
             })
         })
@@ -176,8 +183,8 @@ const EditTool = forwardRef((props: any, ref) => {
     // 删除工具
     const handleDelete = () => {
         bsConfirm({
-            title: "提示",
-            desc: "确认删除该工具？",
+            title: t('prompt'),
+            desc: t('skills,deleteSure'),
             onOk(next) {
                 // api
                 captureAndAlertRequestErrorHoc(deleteTool(fromDataRef.current.id)).then(res => {
@@ -195,22 +202,23 @@ const EditTool = forwardRef((props: any, ref) => {
     const handleTest = (obj) => {
         testDialogRef.current.open(obj)
     }
+    const { t } = useTranslation()
 
     return <div>
         <Sheet open={editShow} onOpenChange={setEditShow}>
             <SheetContent className="w-[800px] sm:max-w-[800px] p-4">
                 <SheetHeader>
-                    <SheetTitle>创建自定义工具</SheetTitle>
+                    <SheetTitle>{t('tools.createCustomTool')}</SheetTitle>
                 </SheetHeader>
                 <div className="mt-4 overflow-y-auto h-screen pb-40">
                     {/* name */}
-                    <label htmlFor="open" className="px-6">名称</label>
+                    <label htmlFor="open" className="px-6">{t('tools.name')}</label>
                     <div className="px-6 mb-4" >
                         <Input
                             id="toolName"
                             name="toolName"
                             className="mt-2"
-                            placeholder="输入工具名称"
+                            placeholder={t('tools.enterToolName')}
                             value={formState.toolName}
                             onChange={handleInputChange}
                         />
@@ -221,7 +229,7 @@ const EditTool = forwardRef((props: any, ref) => {
                         <div className="flex gap-2">
                             <Popover>
                                 <PopoverTrigger asChild>
-                                    <Button variant="outline"><PlusIcon /> 从 URL 导入</Button>
+                                    <Button variant="outline"><PlusIcon /> {t('tools.importFromUrl')}</Button>
                                 </PopoverTrigger>
                                 <PopoverContent className="w-80" align="end">
                                     <div className="flex items-center gap-4">
@@ -232,19 +240,19 @@ const EditTool = forwardRef((props: any, ref) => {
                                             onChange={(e) => schemaUrl.current = e.target.value}
                                         />
                                         <PopoverClose>
-                                            <Button size="sm" className="w-16" onClick={handleImportSchema}>导入</Button>
+                                            <Button size="sm" className="w-16" onClick={handleImportSchema}>{t('tools.import')}</Button>
                                         </PopoverClose>
                                     </div>
                                 </PopoverContent>
                             </Popover>
                             <Select value="1" onValueChange={(k) => handleSelectTemplate(k)}>
                                 <SelectTrigger >
-                                    <span>示例</span>
+                                    <span>{t('tools.examples')}</span>
                                 </SelectTrigger>
                                 <SelectContent>
                                     <SelectGroup>
-                                        <SelectItem value="json">天气(JSON)</SelectItem>
-                                        <SelectItem value="yaml">宠物商店(YAML)</SelectItem>
+                                        <SelectItem value="json">{t('tools.weatherJson')}</SelectItem>
+                                        <SelectItem value="yaml">{t('tools.petShopYaml')}</SelectItem>
                                     </SelectGroup>
                                 </SelectContent>
                             </Select>
@@ -254,34 +262,35 @@ const EditTool = forwardRef((props: any, ref) => {
                         <Textarea
                             id="schemaContent"
                             name="schemaContent"
-                            placeholder="输入您的 OpenAPI schema"
+                            placeholder={t('tools.enterOpenAPISchema')}
                             className="mt-2 min-h-52"
                             value={formState.schemaContent}
                             onChange={handleInputChange}
+                            onBlur={() => handleSelectTemplate()}
                         />
                     </div>
-                    <label htmlFor="open" className="px-6">鉴权方式</label>
+                    <label htmlFor="open" className="px-6">{t('tools.authenticationType')}</label>
                     <div className="px-6">
                         <div className="px-6 mb-4" >
-                            <label htmlFor="open" className="bisheng-label">认证类型</label>
+                            <label htmlFor="open" className="bisheng-label">{t('tools.authType')}</label>
                             <RadioGroup
                                 id="authMethod"
                                 name="authMethod"
-                                defaultValue="none"
+                                defaultValue={formState.authMethod}
                                 className="flex mt-2 gap-4"
                                 onValueChange={(value) => setFormState(prevState => ({ ...prevState, authMethod: value }))}
                             >
                                 <div className="flex items-center space-x-2">
                                     <RadioGroupItem value="none" id="r1" />
-                                    <Label htmlFor="r1">无</Label>
+                                    <Label htmlFor="r1">{t('tools.none')}</Label>
                                 </div>
                                 <div className="flex items-center space-x-2">
                                     <RadioGroupItem value="apikey" id="r2" />
-                                    <Label htmlFor="r2">API Key</Label>
+                                    <Label htmlFor="r2">{t('tools.apiKey')}</Label>
                                 </div>
                             </RadioGroup>
                         </div>
-                        {formState.authMethod === "apikey" && (
+                        {formState.authMethod === "apikey" && (<>
                             <div className="px-6 mb-4">
                                 <label htmlFor="apiKey">API Key</label>
                                 <Input
@@ -292,30 +301,31 @@ const EditTool = forwardRef((props: any, ref) => {
                                     onChange={handleInputChange}
                                 />
                             </div>
-                        )}
-                        <div className="px-6 mb-4" >
-                            <label htmlFor="open" className="bisheng-label">Auth Type</label>
-                            <RadioGroup
-                                id="authType"
-                                name="authType"
-                                defaultValue="basic"
-                                className="flex mt-2 gap-4"
-                                onValueChange={(value) => setFormState(prevState => ({ ...prevState, authType: value }))}
-                            >
-                                <div className="flex items-center space-x-2">
-                                    <RadioGroupItem value="basic" id="r4" />
-                                    <Label htmlFor="r4">Basic</Label>
-                                </div>
-                                <div className="flex items-center space-x-2">
-                                    <RadioGroupItem value="bearer" id="r5" />
-                                    <Label htmlFor="r5">Bearer</Label>
-                                </div>
-                                {/* <div className="flex items-center space-x-2">
+
+                            <div className="px-6 mb-4" >
+                                <label htmlFor="open" className="bisheng-label">Auth Type</label>
+                                <RadioGroup
+                                    id="authType"
+                                    name="authType"
+                                    defaultValue={formState.authType}
+                                    className="flex mt-2 gap-4"
+                                    onValueChange={(value) => setFormState(prevState => ({ ...prevState, authType: value }))}
+                                >
+                                    <div className="flex items-center space-x-2">
+                                        <RadioGroupItem value="basic" id="r4" />
+                                        <Label htmlFor="r4">Basic</Label>
+                                    </div>
+                                    <div className="flex items-center space-x-2">
+                                        <RadioGroupItem value="bearer" id="r5" />
+                                        <Label htmlFor="r5">Bearer</Label>
+                                    </div>
+                                    {/* <div className="flex items-center space-x-2">
                                     <RadioGroupItem value="custom" id="r6" />
                                     <Label htmlFor="r6">Custom</Label>
                                 </div> */}
-                            </RadioGroup>
-                        </div>
+                                </RadioGroup>
+                            </div>
+                        </>)}
                         {/* {formState.authMethod === "custom" && (
                             <div className="px-6 mb-4">
                                 <label htmlFor="customHeader">Custom Header Name</label>
@@ -329,21 +339,21 @@ const EditTool = forwardRef((props: any, ref) => {
                             </div>
                         )} */}
                     </div>
-                    <label htmlFor="open" className="px-6">可用工具</label>
+                    <label htmlFor="open" className="px-6">{t('tools.availableTools')}</label>
                     <div className="px-6 mb-4" >
                         <Table>
                             <TableHeader>
                                 <TableRow>
-                                    <TableHead className="w-[100px]">名称</TableHead>
-                                    <TableHead >描述</TableHead>
-                                    <TableHead >方法</TableHead>
-                                    <TableHead >路径</TableHead>
+                                    <TableHead className="w-[100px]">{t('tools.name')}</TableHead>
+                                    <TableHead >{t('tools.description')}</TableHead>
+                                    <TableHead >{t('tools.method')}</TableHead>
+                                    <TableHead >{t('tools.path')}</TableHead>
                                     {/* <TableHead >操作</TableHead> */}
                                 </TableRow>
                             </TableHeader>
                             <TableBody>
                                 {
-                                    tableData.map((item, index) =>
+                                    tableData.length ? tableData.map((item, index) =>
                                         <TableRow key={index}>
                                             <TableCell>{item.name}</TableCell>
                                             <TableCell>{item.desc}</TableCell>
@@ -357,11 +367,48 @@ const EditTool = forwardRef((props: any, ref) => {
                                                 >测试</Button>
                                             </TableCell> */}
                                         </TableRow>
-                                    )
+                                    ) :
+                                        <TableRow>
+                                            <TableCell colSpan={4}>{t('tools.none')}</TableCell>
+                                        </TableRow>
                                 }
                             </TableBody>
                         </Table>
                     </div>
+                </div>
+                <label htmlFor="open" className="px-6">{t('tools.authenticationType')}</label>
+                <div className="px-6">
+                    <div className="px-6 mb-4" >
+                        <label htmlFor="open" className="bisheng-label">{t('tools.authType')}</label>
+                        <RadioGroup
+                            id="authMethod"
+                            name="authMethod"
+                            defaultValue="none"
+                            className="flex mt-2 gap-4"
+                            onValueChange={(value) => setFormState(prevState => ({ ...prevState, authMethod: value }))}
+                        >
+                            <div className="flex items-center space-x-2">
+                                <RadioGroupItem value="none" id="r1" />
+                                <Label htmlFor="r1">{t('tools.none')}</Label>
+                            </div>
+                            <div className="flex items-center space-x-2">
+                                <RadioGroupItem value="apikey" id="r2" />
+                                <Label htmlFor="r2">{t('tools.apiKey')}</Label>
+                            </div>
+                        </RadioGroup>
+                    </div>
+                    {formState.authMethod === "apikey" && (
+                        <div className="px-6 mb-4">
+                            <label htmlFor="apiKey">{t('tools.apiKey')}</label>
+                            <Input
+                                id="apiKey"
+                                name="apiKey"
+                                className="mt-2"
+                                value={formState.apiKey}
+                                onChange={handleInputChange}
+                            />
+                        </div>
+                    )}
                 </div>
                 <SheetFooter className="absolute bottom-0 right-0 w-full px-6 py-4 bg-[#fff]">
                     {delShow && <Button
@@ -369,17 +416,15 @@ const EditTool = forwardRef((props: any, ref) => {
                         variant="destructive"
                         className="absolute left-6"
                         onClick={handleDelete}
-                    >删除</Button>}
-                    <Button size="sm" variant="outline" onClick={() => setEditShow(false)}>取消</Button>
-                    <Button size="sm" onClick={handleSave}>保存</Button>
+                    >{t('tools.delete')}</Button>}
+                    <Button size="sm" variant="outline" onClick={() => setEditShow(false)}>{t('tools.cancel')}</Button>
+                    <Button size="sm" onClick={handleSave}>{t('tools.save')}</Button>
                 </SheetFooter>
             </SheetContent>
         </Sheet >
         {/* test dialog */}
         <TestDialog ref={testDialogRef} />
     </div>
-
-
 })
 
 export default EditTool
