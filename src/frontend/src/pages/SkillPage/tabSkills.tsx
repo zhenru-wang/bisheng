@@ -56,7 +56,8 @@ export default function Skills() {
 
     const handleSetting = (data) => {
         // console.log('data :>> ', data);
-        navigate("/build/skill/" + data.id)
+        const vid = data.version_list.find(item => item.is_current === 1)?.id
+        navigate(`/build/skill/${data.id}/${vid}`)
     }
 
     // 选模板(创建技能)
@@ -118,7 +119,7 @@ export default function Skills() {
                                     onAddTemp={toggleTempModal}
                                     onCheckedChange={handleCheckedChange}
                                     onDelete={handleDelete}
-                                    onSetting={handleSetting}
+                                    onSetting={(item) => handleSetting(item)}
                                     headSelecter={(
                                         <CardSelectVersion
                                             showPop={item.status !== 2}
@@ -134,7 +135,7 @@ export default function Skills() {
         {/* 添加模板 */}
         <CreateTemp flow={flowRef.current} open={tempOpen} setOpen={() => toggleTempModal()} onCreated={() => { }} ></CreateTemp>
         {/* footer */}
-        <div className="flex justify-between absolute bottom-0 left-0 w-full bg-[#F4F5F8] h-16 items-center px-10">
+        <div className="flex justify-between absolute bottom-0 left-0 w-full bg-background-main h-16 items-center px-10">
             <p className="text-sm text-muted-foreground break-keep">{t('skills.manageProjects')}</p>
             <AutoPagination className="m-0 w-auto justify-end" page={page} pageSize={pageSize} total={total} onChange={setPage}></AutoPagination>
         </div>
