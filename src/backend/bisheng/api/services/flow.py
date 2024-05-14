@@ -309,7 +309,7 @@ class FlowService:
             index, answer_dict = await one
             for version_id, answer in answer_dict.items():
                 yield str(StreamData(event='message',
-                                     data={'question': req.question_list[index],
+                                     data={'question_index': index,
                                            'version_id': version_id,
                                            'answer': answer}))
 
@@ -328,7 +328,8 @@ class FlowService:
                                                     flow_id=one.flow_id)
             except Exception as e:
                 logger.exception(f"exec flow node error version_id: {one.name}")
-                raise Exception(f"{one.name}版本技能执行出错： {str(e)}")
+                answer_result[one.id] = f"{one.name}版本技能执行出错： {str(e)}"
+                continue
             if isinstance(result, dict) and 'result' in result:
                 task_result = result['result']
             elif hasattr(result, 'result') and hasattr(result, 'session_id'):
