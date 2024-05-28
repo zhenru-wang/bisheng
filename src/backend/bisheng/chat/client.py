@@ -207,6 +207,7 @@ class ChatClient:
             # 获取minio的share地址，把share域名去掉, 为毕昇的部署方案特殊处理下
             if gpts_tool_conf := self.gpts_conf.get('tools'):
                 if bisheng_code_conf := gpts_tool_conf.get("bisheng_code_interpreter"):
+                    logger.debug(f"replace minio sharepoint {answer}")
                     answer = answer.replace(f"http://{bisheng_code_conf['minio']['MINIO_SHAREPOIN']}", "")
 
             res = await self.add_message('bot', answer, 'answer')
