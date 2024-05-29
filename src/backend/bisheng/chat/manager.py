@@ -6,6 +6,8 @@ from collections import defaultdict
 from typing import Any, Dict, List
 from uuid import UUID
 
+from starlette.websockets import WebSocketState
+
 from bisheng.api.utils import build_flow_no_yield
 from bisheng.api.v1.schemas import ChatMessage, ChatResponse, FileResponse
 from bisheng.cache import cache_manager
@@ -168,7 +170,8 @@ class ChatManager:
     async def close_client(self, client_key: str, code: int, reason: str):
         if chat_client := self.active_clients.get(client_key):
             try:
-                await chat_client.websocket.close(code=code, reason=reason)
+                if chat_client.websocket.client_state == WebSocketState.CONNECTED:
+                    await chat_client.websocket.close(code=code, reason=reason)
                 self.clear_client(client_key)
             except RuntimeError as exc:
                 # This is to catch the following error:

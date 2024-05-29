@@ -457,5 +457,5 @@ class Vertex:
         return id(self)
 
     def _built_object_repr(self):
-        # Add a message with an emoji, stars for sucess,
+        # Add a message with an emoji, stars for success,
         return f'Built successfully {self.id}' if self._built_object else f'Failed to build {self.id}'
