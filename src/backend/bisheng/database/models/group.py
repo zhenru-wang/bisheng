@@ -1,15 +1,15 @@
+from ast import Dict
 from datetime import datetime
 from typing import List, Optional
 
 from bisheng.database.base import session_getter
 from bisheng.database.models.base import SQLModelSerializable
 from sqlalchemy import Column, DateTime, text
-from sqlmodel import Field
+from sqlmodel import Field, select
 
 
-class RoleBase(SQLModelSerializable):
-    role_name: str = Field(index=False, description='前端展示名称', unique=True)
-    group_id: Optional[int] = Field(index=True)
+class GroupBase(SQLModelSerializable):
+    group_name: str = Field(index=False, description='前端展示名称', unique=True)
     remark: Optional[str] = Field(index=False)
     create_time: Optional[datetime] = Field(sa_column=Column(
         DateTime, nullable=False, index=True, server_default=text('CURRENT_TIMESTAMP')))
@@ -20,44 +20,50 @@ class RoleBase(SQLModelSerializable):
                          onupdate=text('CURRENT_TIMESTAMP')))
 
 
-class Role(RoleBase, table=True):
+class Group(GroupBase, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
 
 
-class RoleRead(RoleBase):
+class GroupRead(GroupBase):
     id: Optional[int]
+    group_admins: Optional[List[Dict]]
 
 
-class RoleUpdate(RoleBase):
+class GroupUpdate(GroupBase):
     role_name: Optional[str]
     remark: Optional[str]
 
 
-class RoleCreate(RoleBase):
+class GroupCreate(GroupBase):
     pass
 
 
-class RoleDao(RoleBase):
+class GroupDao(GroupBase):
 
     @classmethod
-    def get_role_by_groups(cls, group: List[int]):
+    def get_user_group(cls, group_id: int) -> Group | None:
         with session_getter() as session:
-            return session.query(Role).filter(Role.group_id.in_(group)).all()
+            statement = select(Group).where(Group.id == group_id)
+            return session.exec(statement).first()
 
     @classmethod
-    def insert_role(cls, role: RoleCreate):
+    def insert_group(cls, group: GroupCreate) -> Group:
         with session_getter() as session:
-            session.add(role)
+            session.add(group)
             session.commit()
-            session.refresh(role)
-            return role
+            session.refresh(group)
+            return group
 
     @classmethod
-    def get_role_by_ids(cls, role_ids: List[int]) -> List[Role]:
+    def get_all_group(cls) -> list[Group]:
         with session_getter() as session:
-            return session.query(Role).filter(Role.id.in_(role_ids)).all()
+            statement = select(Group)
+            return session.exec(statement).all()
 
     @classmethod
-    def get_role_by_id(cls, role_id: int) -> Role:
+    def get_group_by_ids(cls, ids: List[int]) -> list[Group]:
+        if not ids:
+            raise ValueError('ids is empty')
         with session_getter() as session:
-            return session.query(Role).filter(Role.id == role_id).first()
+            statement = select(Group).where(Group.id.in_(ids))
+            return session.exec(statement).all()
