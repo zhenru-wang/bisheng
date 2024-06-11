@@ -1,6 +1,5 @@
 # build router
 import json
-from os import name
 from typing import Annotated, List, Optional
 
 from bisheng.api.services.role_group_service import RoleGroupService
@@ -45,12 +44,12 @@ async def get_all_group(Authorize: AuthJWT = Depends()):
 @router.post('/set_user_group',
              response_model=UnifiedResponseModel[UserGroupRead],
              status_code=200)
-async def set_user_group(user_group: UserGroupCreate, Authorize: AuthJWT = Depends()):
+async def set_user_group(user_id: int, group_id: List[int], Authorize: AuthJWT = Depends()):
     """
-    设置用户分组
+    设置用户分组, 批量替换
     """
     await check_permissions(Authorize, ['admin'])
-    return resp_200(RoleGroupService().insert_user_group(user_group))
+    return resp_200(RoleGroupService().replace_user_groups(user_id, group_id))
 
 
 @router.get('/get_user_group',
@@ -95,6 +94,7 @@ async def set_group_admin(user_ids: Annotated[List[int], Body(embed=True)],
 async def get_group_flows(*,
                           group_id: int,
                           resource_type: int,
+                          name: Optional[str] = None,
                           page_size: Optional[int] = 10,
                           page_num: Optional[int] = 1,
                           Authorize: AuthJWT = Depends()):
