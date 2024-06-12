@@ -47,7 +47,9 @@ async def create_group(group: GroupCreate, Authorize: AuthJWT = Depends()):
     新建用户组
     """
     await check_permissions(Authorize, ['admin'])
-    return resp_200(RoleGroupService().create_group(group))
+    payload = json.loads(Authorize.get_jwt_subject())
+    login_user = UserPayload(**payload)
+    return resp_200(RoleGroupService().create_group(login_user, group))
 
 
 @router.put('/create', response_model=UnifiedResponseModel[GroupRead], status_code=200)
@@ -56,7 +58,9 @@ async def update_group(group: Group, Authorize: AuthJWT = Depends()):
     编辑用户组
     """
     await check_permissions(Authorize, ['admin'])
-    return resp_200(RoleGroupService().update_group(group))
+    payload = json.loads(Authorize.get_jwt_subject())
+    login_user = UserPayload(**payload)
+    return resp_200(RoleGroupService().update_group(login_user, group))
 
 
 @router.delete('/create', status_code=200)
@@ -78,7 +82,9 @@ async def set_user_group(user_id: Annotated[int, Body(embed=True)],
     设置用户分组, 批量替换
     """
     await check_permissions(Authorize, ['admin'])
-    return resp_200(RoleGroupService().replace_user_groups(user_id, group_id))
+    payload = json.loads(Authorize.get_jwt_subject())
+    login_user = UserPayload(**payload)
+    return resp_200(RoleGroupService().replace_user_groups(login_user, user_id, group_id))
 
 
 @router.get('/get_user_group',
@@ -114,7 +120,21 @@ async def set_group_admin(user_ids: Annotated[List[int], Body(embed=True)],
     获取分组的admin，批量设置接口，覆盖历史的admin
     """
     await check_permissions(Authorize, ['admin'])
-    return resp_200(RoleGroupService().set_group_admin(user_ids, group_id))
+    payload = json.loads(Authorize.get_jwt_subject())
+    login_user = UserPayload(**payload)
+    return resp_200(RoleGroupService().set_group_admin(login_user, user_ids, group_id))
+
+
+@router.post('/set_update_user', status_code=200)
+async def set_update_user(group_id: Annotated[int, Body(embed=True)],
+                          Authorize: AuthJWT = Depends()):
+    """
+    更新用户组的最近修改人
+    """
+    # await check_permissions(Authorize, ['admin'])
+    payload = json.loads(Authorize.get_jwt_subject())
+    login_user = UserPayload(**payload)
+    return resp_200(RoleGroupService().set_group_update_user(login_user, group_id))
 
 
 @router.get('/get_group_flows',
