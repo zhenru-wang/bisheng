@@ -4,11 +4,15 @@ import random
 import string
 import uuid
 from base64 import b64decode, b64encode
+from datetime import datetime
 from io import BytesIO
 from typing import List, Optional, Dict, Annotated
 from uuid import UUID
 
 import rsa
+
+from bisheng.api.JWT import get_login_user
+from bisheng.api.errcode.user import UserNotPasswordError, UserValidateError, UserPasswordExpireError
 from bisheng.api.services.captcha import verify_captcha
 from bisheng.api.services.user_service import gen_user_jwt, get_assistant_list_by_access, UserPayload, gen_user_role
 from bisheng.api.v1.schemas import UnifiedResponseModel, resp_200
@@ -23,7 +27,7 @@ from bisheng.database.models.user import User, UserCreate, UserDao, UserLogin, U
 from bisheng.database.models.user_group import UserGroupDao
 from bisheng.database.models.user_role import UserRole, UserRoleCreate, UserRoleDao
 from bisheng.settings import settings
-from bisheng.utils.constants import CAPTCHA_PREFIX, RSA_KEY
+from bisheng.utils.constants import CAPTCHA_PREFIX, RSA_KEY, USER_PASSWORD_ERROR
 from bisheng.utils.logger import logger
 from captcha.image import ImageCaptcha
 from fastapi import APIRouter, Depends, HTTPException, Query
@@ -117,20 +121,44 @@ async def login(*, user: UserLogin, Authorize: AuthJWT = Depends()):
     else:
         password = md5_hash(user.password)
 
-    with session_getter() as session:
-        db_user = session.exec(
-            select(User).where(User.user_name == user.user_name,
-                               User.password == password)).first()
-    if db_user:
-        access_token, refresh_token, role = gen_user_jwt(db_user)
+    db_user = UserDao.get_user_by_username(user.user_name)
+    # 检查密码
+    if not db_user or not db_user.password:
+        return UserValidateError.return_resp()
 
-        # Set the JWT cookies in the response
-        Authorize.set_access_cookies(access_token)
-        Authorize.set_refresh_cookies(refresh_token)
+    if 1 == db_user.delete:
+        raise HTTPException(status_code=500, detail='该账号已被禁用，请联系管理员')
 
-        return resp_200(UserRead(role=str(role), access_token=access_token, **db_user.__dict__))
-    else:
-        raise HTTPException(status_code=500, detail='密码不正确')
+    password_conf = settings.get_password_conf()
+
+    if db_user.password and db_user.password != password:
+        # 判断是否需要记录错误次数
+        if not password_conf.login_error_time_window or not password_conf.max_error_times:
+            return UserValidateError.return_resp()
+        error_key = USER_PASSWORD_ERROR + db_user.user_name
+        error_num = redis_client.get(error_key)
+        if error_num and int(error_num) >= password_conf.max_error_times:
+            # 错误次数到达上限，封禁账号
+            db_user.delete = 1
+            UserDao.update_user(db_user)
+            raise HTTPException(status_code=500, detail='该账号已被禁用，请联系管理员')
+
+        # 设置错误次数
+        redis_client.incr(error_key, password_conf.login_error_time_window * 60)
+        return UserValidateError.return_resp()
+
+    # 判断下密码是否长期未修改
+    if password_conf.password_valid_period and password_conf.password_valid_period > 0:
+        if (datetime.now() - db_user.password_update_time).days >= password_conf.password_valid_period:
+            return UserPasswordExpireError.return_resp()
+
+    access_token, refresh_token, role = gen_user_jwt(db_user)
+
+    # Set the JWT cookies in the response
+    Authorize.set_access_cookies(access_token)
+    Authorize.set_refresh_cookies(refresh_token)
+
+    return resp_200(UserRead(role=str(role), access_token=access_token, **db_user.__dict__))
 
 
 @router.get('/user/admin', response_model=UnifiedResponseModel[UserRead], status_code=200)
@@ -665,6 +693,67 @@ async def get_rsa_publish_key():
     pubkey_str = pubkey.save_pkcs1().decode()
 
     return resp_200({'public_key': pubkey_str})
+
+
+@router.post("/user/reset_password", status_code=200)
+async def reset_password(*, user_id: int, password: str, login_user: UserPayload = Depends(get_login_user), ):
+    """
+    管理员重置用户密码
+    """
+    # 获取要修改密码的用户信息
+    user_info = UserDao.get_user(user_id)
+    if not user_info:
+        raise HTTPException(status_code=404, detail='用户不存在')
+
+    # 查询用户所在的用户组
+    user_groups = UserGroupDao.get_user_group(user_info.user_id)
+    user_group_ids = [one.group_id for one in user_groups]
+
+    # 检查是否有分组的管理权限
+    if not login_user.check_groups_admin(user_group_ids):
+        raise HTTPException(status_code=403, detail='没有权限重置密码')
+
+    user_info.password = md5_hash(password)
+    user_info.password_update_time = datetime.now()
+    UserDao.update_user(user_info)
+    return resp_200()
+
+
+@router.post("/user/change_password", status_code=200)
+async def change_password(*, password: str, new_password: str, login_user: UserPayload = Depends(get_login_user)):
+    """
+    登录用户 修改自己的密码
+    """
+    user_info = UserDao.get_user(login_user.user_id)
+    if not user_info.password:
+        return UserNotPasswordError.return_resp()
+
+    if user_info.password != md5_hash(password):
+        return UserValidateError.return_resp()
+
+    user_info.password = md5_hash(new_password)
+    user_info.password_update_time = datetime.now()
+    UserDao.update_user(user_info)
+    return resp_200()
+
+
+@router.post("/user/change_password_public", status_code=200)
+async def change_password_public(*, username: str, password: str, new_password: str):
+    """
+    未登录用户 修改自己的密码
+    """
+
+    user_info = UserDao.get_user_by_username(username)
+    if not user_info.password:
+        return UserValidateError.return_resp()
+
+    if user_info.password != md5_hash(password):
+        return UserValidateError.return_resp()
+
+    user_info.password = md5_hash(new_password)
+    user_info.password_update_time = datetime.now()
+    UserDao.update_user(user_info)
+    return resp_200()
 
 
 def md5_hash(string):

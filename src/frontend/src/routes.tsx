@@ -8,6 +8,7 @@ import Doc from "./pages/ModelPage/doc";
 import Report from "./pages/Report";
 import SkillChatPage from "./pages/ChatAppPage";
 import ChatShare from "./pages/ChatAppPage/chatShare";
+import ChatPro from "./pages/ChatAppPage/chatWebview";
 import SkillAssisPage from "./pages/SkillPage/tabAssistant";
 import EditAssistantPage from "./pages/SkillPage/editAssistant";
 import SkillsPage from "./pages/SkillPage/tabSkills";
@@ -19,6 +20,8 @@ import Templates from "./pages/SkillPage/temps";
 import DiffFlowPage from "./pages/DiffFlowPage";
 import { ErrorBoundary } from "react-error-boundary";
 import CrashErrorComponent from "./components/CrashErrorComponent";
+import { LoginPage } from "./pages/login";
+import { ResetPwdPage } from "./pages/resetPwd";
 
 // react 与 react router dom版本不匹配
 // const FileLibPage = lazy(() => import(/* webpackChunkName: "FileLibPage" */ "./pages/FileLibPage"));
@@ -39,7 +42,7 @@ const ErrorHoc = ({ Comp }) => {
 }
 
 
-const router = createBrowserRouter([
+export const privateRouter = createBrowserRouter([
   {
     path: "/",
     element: <MainLayout />,
@@ -80,10 +83,17 @@ const router = createBrowserRouter([
   // 独立会话页
   { path: "/chat", element: <SkillChatPage /> },
   { path: "/chat/:id/", element: <ChatShare /> },
+  { path: "/chatpro/:id/", element: <ChatPro /> },
   { path: "/report/:id/", element: <Report /> },
   { path: "/diff/:id/:vid/:cid", element: <ErrorHoc Comp={DiffFlowPage} /> },
+  { path: "/reset", element: <ResetPwdPage /> },
   // { path: "/test", element: <Test /> },
   { path: "*", element: <Navigate to="/" replace /> }
 ]);
 
-export default router;
+
+export const publicRouter = createBrowserRouter([
+  { path: "/", element: <LoginPage /> },
+  { path: "/reset", element: <ResetPwdPage /> },
+  { path: "*", element: <LoginPage /> }
+])

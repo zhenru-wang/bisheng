@@ -1,10 +1,11 @@
+from ast import Dict
 from datetime import datetime
 from enum import Enum
 from typing import Dict, List, Optional
 
 from bisheng.database.base import session_getter
 from bisheng.database.models.base import SQLModelSerializable
-from sqlalchemy import Column, DateTime, text
+from sqlalchemy import Column, DateTime, text, delete
 from sqlmodel import Field, select
 
 
@@ -12,12 +13,13 @@ class ResourceTypeEnum(Enum):
     KNOWLEDGE = 1
     FLOW = 2
     ASSISTANT = 3
+    TOOL = 4
 
 
 class GroupResourceBase(SQLModelSerializable):
     group_id: str = Field(index=True)
     third_id: str = Field(index=False)
-    type: int = Field(index=False, description='1:知识库 2:工作流 3:知识库写权限 4:工作流写权限 5:助手读权限 6:助手写权限')
+    type: int = Field(index=False, description='资源类别 1:知识库 2:技能 3:助手 4:工具')
     create_time: Optional[datetime] = Field(sa_column=Column(
         DateTime, nullable=False, index=True, server_default=text('CURRENT_TIMESTAMP')))
     update_time: Optional[datetime] = Field(
@@ -56,6 +58,13 @@ class GroupResourceDao(GroupResourceBase):
             return group_resource
 
     @classmethod
+    def insert_group_batch(cls, group_resources: List[GroupResource]) -> List[GroupResource]:
+        with session_getter() as session:
+            session.add_all(group_resources)
+            session.commit()
+            return group_resources
+
+    @classmethod
     def get_group_resource(cls,
                            group_id: int,
                            resource_type: ResourceTypeEnum,
@@ -70,3 +79,12 @@ class GroupResourceDao(GroupResourceBase):
             if page_num and page_size:
                 statement = statement.offset(page_size * (page_num - 1)).limit(page_size)
             return session.exec(statement).all()
+
+    @classmethod
+    def delete_group_resource_by_third_id(cls, third_id: str, resource_type: ResourceTypeEnum) -> None:
+        with (session_getter() as session):
+            statement = delete(GroupResource).where(
+                GroupResource.third_id == third_id).where(
+                GroupResource.type == resource_type.value)
+            session.exec(statement)
+            session.commit()

@@ -16,9 +16,11 @@ from bisheng.database.models.assistant import (Assistant, AssistantDao, Assistan
                                                AssistantStatus)
 from bisheng.database.models.flow import Flow, FlowDao
 from bisheng.database.models.gpts_tools import GptsToolsDao, GptsToolsRead, GptsToolsTypeRead, GptsTools
+from bisheng.database.models.group_resource import GroupResourceDao, GroupResource, ResourceTypeEnum
 from bisheng.database.models.knowledge import KnowledgeDao
 from bisheng.database.models.role_access import AccessType, RoleAccessDao
 from bisheng.database.models.user import UserDao
+from bisheng.database.models.user_group import UserGroupDao
 from bisheng.database.models.user_role import UserRoleDao
 from loguru import logger
 
@@ -51,14 +53,22 @@ class AssistantService(AssistantUtils):
             res, total = AssistantDao.get_assistants(user.user_id, name, assistant_ids_extra, status, page, limit)
 
         for one in res:
-            simple_dict = one.model_dump(include={
-                'id', 'name', 'desc', 'logo', 'status', 'user_id', 'create_time', 'update_time'
-            })
+            simple_assistant = cls.return_simple_assistant_info(one)
             if one.user_id == user.user_id or user.is_admin():
-                simple_dict['write'] = True
-            simple_dict['user_name'] = cls.get_user_name(one.user_id)
-            data.append(AssistantSimpleInfo(**simple_dict))
+                simple_assistant.write = True
+            data.append(simple_assistant)
         return resp_200(data={'data': data, 'total': total})
+
+    @classmethod
+    def return_simple_assistant_info(cls, one: Assistant) -> AssistantSimpleInfo:
+        """
+        将数据库的 助手model简化 处理后成返回前端的格式
+        """
+        simple_dict = one.model_dump(include={
+            'id', 'name', 'desc', 'logo', 'status', 'user_id', 'create_time', 'update_time'
+        })
+        simple_dict['user_name'] = cls.get_user_name(one.user_id)
+        return AssistantSimpleInfo(**simple_dict)
 
     @classmethod
     def get_assistant_info(cls, assistant_id: UUID, user_id: str):
@@ -110,6 +120,23 @@ class AssistantService(AssistantUtils):
                                            flow_list=[],
                                            knowledge_list=[]))
 
+    @classmethod
+    def create_assistant_hook(cls, assistant: Assistant, user_payload: UserPayload) -> bool:
+        """
+        创建助手成功后的hook，执行一些其他业务逻辑
+        """
+        # 查询下用户所在的用户组
+        user_group = UserGroupDao.get_user_group(user_payload.user_id)
+        if user_group:
+            # 批量将助手资源插入到关联表里
+            batch_resource = []
+            for one in user_group:
+                batch_resource.append(GroupResource(
+                    group_id=one.group_id,
+                    third_id=assistant.id.hex,
+                    type=ResourceTypeEnum.ASSISTANT))
+            GroupResourceDao.insert_group_batch(batch_resource)
+
     # 删除助手
     @classmethod
     def delete_assistant(cls, assistant_id: UUID, user_payload: UserPayload) -> UnifiedResponseModel:
@@ -123,6 +150,13 @@ class AssistantService(AssistantUtils):
 
         AssistantDao.delete_assistant(assistant)
         return resp_200()
+
+    @classmethod
+    def delete_assistant_hook(cls, assistant: Assistant, user_payload: UserPayload) -> bool:
+        """ 清理关联的助手资源 """
+        logger.info(f"delete_assistant_hook id: {assistant.id}, user: {user_payload.user_id}")
+        GroupResourceDao.delete_group_resource_by_third_id(assistant.id.hex, ResourceTypeEnum.ASSISTANT)
+        return True
 
     @classmethod
     async def auto_update_stream(cls, assistant_id: UUID, prompt: str):

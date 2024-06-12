@@ -168,3 +168,5 @@ class UserGroupDao(UserGroupBase):
                 UserGroup.is_group_admin == 1)
             session.exec(statement)
             session.commit()
+
+

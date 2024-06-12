@@ -34,6 +34,7 @@ class UserBase(SQLModelSerializable):
 class User(UserBase, table=True):
     user_id: Optional[int] = Field(default=None, primary_key=True)
     password: str = Field(index=False)
+    password_update_time: Optional[datetime] = Field(index=False, description="密码最近的修改时间")
 
 
 class UserRead(UserBase):
@@ -78,6 +79,20 @@ class UserDao(UserBase):
         with session_getter() as session:
             statement = select(User).where(User.user_id.in_(user_ids))
             return session.exec(statement).all()
+
+    @classmethod
+    def get_user_by_username(cls, username: str) -> User | None:
+        with session_getter() as session:
+            statement = select(User).where(User.user_name == username)
+            return session.exec(statement).first()
+
+    @classmethod
+    def update_user(cls, user: User) -> User:
+        with session_getter() as session:
+            session.add(user)
+            session.commit()
+            session.refresh(user)
+            return user
 
     @classmethod
     def filter_users(cls, user_ids: List[int], keyword: str = None, page: int = 0, limit: int = 0) -> (List[User], int):

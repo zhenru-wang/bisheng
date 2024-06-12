@@ -34,6 +34,7 @@ import ContentShow from "../ContentShow";
 import KnowledgeBaseMulti from "./KnowledgeBaseMulti";
 import ModelSelect from "./ModelSelect";
 import Temperature from "./Temperature";
+import KnowledgeSelect from "@/components/bs-comp/selectKnowledge";
 
 export default function Setting() {
   const { t } = useTranslation();
@@ -198,10 +199,11 @@ export default function Setting() {
           <AccordionContent className="py-2">
             <div className="mb-4 px-6">
               <div className="flex gap-4">
-                <KnowledgeBaseMulti
-                  value={assistantState.knowledge_list}
+                <KnowledgeSelect
+                  multiple
+                  value={assistantState.knowledge_list.map(el => ({ label: el.name, value: el.id }))}
                   onChange={(vals) =>
-                    dispatchAssistant("setting", { knowledge_list: vals })
+                    dispatchAssistant("setting", { knowledge_list: vals.map(el => ({ name: el.label, id: el.value })) })
                   }
                 >
                   {(reload) => (
@@ -212,12 +214,12 @@ export default function Setting() {
                           {t("build.createNewKnowledge")}
                         </Button>
                       </Link>
-                      <Button variant="link" onClick={reload}>
+                      <Button variant="link" onClick={() => reload(1, '')}>
                         <ReloadIcon className="mr-1" /> {t("build.refresh")}
                       </Button>
                     </div>
                   )}
-                </KnowledgeBaseMulti>
+                </KnowledgeSelect>
               </div>
             </div>
           </AccordionContent>
