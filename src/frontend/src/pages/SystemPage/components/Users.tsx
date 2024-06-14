@@ -20,8 +20,8 @@ import { userContext } from "../../../contexts/userContext";
 import { disableUserApi, getUsersApi } from "../../../controllers/API/user";
 import { captureAndAlertRequestErrorHoc } from "../../../controllers/request";
 import { useTable } from "../../../util/hook";
-import UserPwdModal from "./UserPwdModal";
 import UserRoleModal from "./UserRoleModal";
+import UserPwdModal from "@/pages/LoginPage/UserPwdModal";
 
 function UsersFilter({ options, nameKey, placeholder, onFilter }) {
     const [open, setOpen] = useState(false)
@@ -45,6 +45,11 @@ function UsersFilter({ options, nameKey, placeholder, onFilter }) {
         if (!searchKey) return options
         return options.filter(a => a[nameKey].toUpperCase().includes(searchKey.toUpperCase()))
     }, [searchKey, options])
+    // 重置
+    const reset = () => {
+        setValue([])
+        setSearchKey('')
+    }
 
     return <Popover open={open} onOpenChange={(bln) => setOpen(bln)}>
         <PopoverTrigger>
@@ -58,7 +63,7 @@ function UsersFilter({ options, nameKey, placeholder, onFilter }) {
                 placeholder={placeholder}
                 onChecked={handlerChecked}
                 search={(e) => setSearchKey(e.target.value)}
-                onClearChecked={() => setValue([])}
+                onClearChecked={reset}
                 onOk={filterData}
             />
         </PopoverContent>
@@ -203,6 +208,6 @@ export default function Users(params) {
         </div>
 
         <UserRoleModal user={currentUser} onClose={() => setCurrentUser(null)} onChange={handleRoleChange}></UserRoleModal>
-        <UserPwdModal ref={userPwdModalRef} onSuccess={reload} />
+        <UserPwdModal ref={userPwdModalRef} />
     </div>
 };
